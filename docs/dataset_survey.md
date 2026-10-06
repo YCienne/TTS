@@ -1,44 +1,43 @@
 # Akan TTS: dataset and checkpoint survey
 
-Status: **desk research via web search, 2026-10-06.** The sandbox blocks huggingface.co, openslr.org and arxiv.org,
-so dataset cards were *not* read directly. Everything marked **VERIFY** must be checked on Colab before we rely on it.
+Last updated 2026-10-06. Items marked **[confirmed]** were read from the Hugging Face Hub (dataset card, config table,
+model metadata). Items marked **[VERIFY]** are still unconfirmed and are checked by `scripts/verify_resources.py` on Colab,
+because the sandbox can't download audio or run the models.
 
 ## Candidate datasets
 
-| Dataset | Variety | Quality | Licence | Notes |
+| Dataset | Variety | Quality | Licence | Status |
 |---|---|---|---|---|
-| **WAXAL TTS**, `google/WaxalNLP` (Univ. of Ghana is the Akan provider) | Akan (Twi; Fante is listed separately) | Studio-like, single-speaker voice actors, phonetically balanced script | CC-BY-4.0 | Up to ~16 h per voice actor. **VERIFY:** the Akan config name, hours, speakers, sample rate (24 kHz?), dialect. |
-| **BibleTTS**, OpenSLR 129 (Meyer et al., Interspeech 2022) | Asante Twi and Akuapem Twi | 48 kHz studio, single speaker, verse-aligned | CC-BY-SA | Up to ~86 h per language. **VERIFY:** Twi hours and speaker gender. The reading style is religious and archaic, and CC-BY-SA applies share-alike to derivatives. |
-| `ghananlpcommunity/twi-speech-text-multispeaker-16k` | Twi | 16 kHz, multispeaker, forced-aligned | **VERIFY** | ~21k pairs. Probably better for ASR evaluation than TTS training. |
-| `ghananlpcommunity/akuapem_multispeaker_audio_transcribed` | Akuapem | Multispeaker | **VERIFY** | Backup. |
+| **WAXAL `twi_tts`**, `google/WaxalNLP` | Twi **[confirmed]** (Asante vs Akuapem: **[VERIFY]**, ask raters) | Studio-like, voice actors reading a phonetically balanced script **[confirmed]** | CC-BY-4.0 (provider: University of Ghana) **[confirmed]** | train 872 / val 117 / test 104 utterances, ~511 MB train parquet **[confirmed]**. Hours, speaker count, gender and sample rate **[VERIFY]**. The card's example shows 16 kHz. |
+| **WAXAL `fat_tts`** | Fante **[confirmed]** | Same pipeline | CC-BY-4.0 | train 953 / val 117 / test 101, ~516 MB train. A second Akan variety, useful for a cross-variety test. |
+| **BibleTTS**, OpenSLR 129 | Asante Twi, Akuapem Twi | 48 kHz studio, single speaker, verse-aligned | CC-BY-SA | Not checked (openslr.org is blocked). Large (tens of hours). Religious register, and share-alike applies to derivatives. Kept as a fallback or ablation. |
+| WAXAL `aka_asr` / `aka_asr_v2` | Akan | Natural speech, many speakers | CC-BY-4.0 | **Not for TTS training.** Useful as held-out data for the ASR round-trip evaluation. Test split is speaker-disjoint **[confirmed]**. |
 
-## Pretrained models and prior work
+Note: there is **no `aka_tts` config**. The Akan TTS data is the separate `twi_tts` and `fat_tts` configs.
 
-- **MMS-TTS** (`facebook/mms-tts`, VITS per language): a search result says Akan (`aka`) is supported, but I could not confirm that `facebook/mms-tts-aka` exists. **VERIFY first**: this decides the fine-tune starting point. The licence is CC-BY-NC 4.0, which is fine for coursework but should be stated.
-- **Existing Twi TTS** (GhanaNLP `nano-twi`, `stable-twi-tts`, Kasanoma): useful as comparison baselines and for citation. Do **not** use them to generate our outputs, since the brief forbids external TTS and we must train ourselves.
-- **Fallback bases if no `aka` checkpoint exists:** `mms-tts-eng` or another MMS voice with the Akan alphabet added (`ylacombe/finetune-hf-vits` recipe), or Piper `libritts_r` warm-start.
+## Pretrained models
 
-## Recommendation
+- **`facebook/mms-tts-aka`** exists **[confirmed]**: VITS, 36.3M parameters, `transformers` (`VitsModel`), **CC-BY-NC-4.0**. This is our fine-tuning start point. The licence is non-commercial, which is fine for this assessment and must be stated in the report and the README.
+- `facebook/mms-tts-twi` does **not** exist **[confirmed]**.
+- **[VERIFY]** whether the MMS Akan vocabulary contains ɛ and ɔ. If it doesn't, the vocabulary needs extending before fine-tuning. The verification script reports this.
+- Existing Twi TTS models on the Hub (GhanaNLP `nano-twi`, `stable-twi-tts`, Kasanoma) can be cited as prior work. They must not be used to generate our outputs.
 
-1. **Primary:** WAXAL Akan TTS, single best voice, 3–5 h subset. It is CC-BY, studio quality and made for TTS, and it matches current speakers better than Bible reading.
-2. **Alternative or ablation:** BibleTTS Asante Twi subset, to compare against and to cover the case where WAXAL turns out to be Akuapem-heavy or thin on hours.
-3. Report the variety **as verified from the data**, not assumed.
-4. Choose the speaker by SNR, pitch stability and transcript quality, then document the choice.
+## Recommendation (updated)
 
-## Constraints discovered
+1. **Data:** WAXAL `twi_tts`, single speaker. Pick the speaker with the most clean hours, then filter by duration and SNR. With only ~1.1k utterances in total, expect 1–4 h per speaker, which is enough for VITS **fine-tuning** but not for training from scratch.
+2. **Model:** fine-tune `facebook/mms-tts-aka` (VITS) with the Hugging Face `transformers` VITS training recipe (adapted from `ylacombe/finetune-hf-vits`).
+3. **Zero-shot baseline:** run the unmodified MMS aka model on the held-out sentences. This gives a clean before/after comparison for the report.
+4. **Evaluation audio:** WAXAL `aka_asr` test (speaker-disjoint) for ASR-based intelligibility checks, plus our own unseen sentences.
 
-- **The sandbox cannot reach the data hosts.** Data prep and training must run on **Colab (free tier)**; the repo only holds scripts. Free T4 has roughly 12 h sessions and may disconnect, so use short epochs, frequent checkpoints to Drive, and a 2–4 h data subset.
-- **Listener study:** 3 native speakers, so report MOS with per-rater scores and no significance claims.
+## Constraints
 
-## Next actions
-
-1. A Colab cell to verify the open items: `facebook/mms-tts-aka` exists, the WAXAL Akan config, hours and speakers, and BibleTTS Twi sizes.
-2. Scaffold the repo (`configs/`, `src/`, `notebooks/`) and a smoke-test inference notebook.
-3. Write the normalization module (NFC, ɛ/ɔ canonicalization) with unit tests.
+- The sandbox can't reach the data hosts or run models, so data prep and training run on **Colab free tier**.
+- 3 native-speaker raters: report per-rater MOS and make no significance claims.
+- The 18 Oct 2026 deadline leaves about 12 days from 6 Oct.
 
 ## Sources
 
-- WAXAL: https://huggingface.co/datasets/google/WaxalNLP · https://arxiv.org/abs/2602.02734
+- WAXAL dataset card: https://huggingface.co/datasets/google/WaxalNLP · paper https://arxiv.org/abs/2602.02734
+- UGSpeechData (source of the Ghana data): https://doi.org/10.57760/sciencedb.22298
+- MMS Akan: https://huggingface.co/facebook/mms-tts-aka · MMS paper https://arxiv.org/abs/2305.13516
 - BibleTTS: https://openslr.org/129 · https://arxiv.org/abs/2207.03546
-- MMS-TTS: https://huggingface.co/facebook/mms-tts
-- GhanaNLP: https://huggingface.co/ghananlpcommunity

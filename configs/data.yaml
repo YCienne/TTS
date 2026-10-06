@@ -1,0 +1,8 @@
+# Data selection for fine-tuning. Values marked TODO are fixed after scripts/verify_resources.py has been run.
+dataset: google/WaxalNLP
+config: twi_tts            # Twi (University of Ghana, CC-BY-4.0)
+speaker_id: null           # TODO: single speaker with most clean hours (from verify.json)
+target_sampling_rate: 16000  # TODO: must match facebook/mms-tts-aka (verify.json -> mms_aka.sampling_rate)
+duration_sec: {min: 1.0, max: 15.0}
+lowercase: true            # MMS vocabularies are lowercase
+base_model: facebook/mms-tts-aka   # CC-BY-NC-4.0

@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+# data, audio and checkpoints live on Drive / the Hub, not in git
+data/
+checkpoints/
+outputs/
+*.wav
+*.pt
+*.safetensors
+# keep the small verification report out of the way of accidental audio commits
+reports/zeroshot/
