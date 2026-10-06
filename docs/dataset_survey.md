@@ -56,6 +56,14 @@ Train split, per speaker. "Usable" is hours in clips of at most 20 s. The SNR-li
 - After normalization only 17 of 872 train utterances still contain digits (bracket stripping works). Left over: `c` (90 utterances), `j` (51), `"` (49), `v` (41), `;` (31), `z` (25), brackets and a few others. `;` and `:` become commas, quotes and brackets are dropped, and utterances with `c j v z q x` or bare digits are rejected.
 - **Pitch is not usable yet.** Median F0 looked plausible for speaker 2 (219 Hz) and 1 (139 Hz), but within-clip spread of 9–12 semitones (normal read speech is about 2–4) means the tracker made octave errors. The "possible mixed voices" flag fired on all four speakers, so it was removed. Pitch should not drive the speaker choice.
 
+## Data preparation, speaker 2 (2026-10-06)
+
+**Run 1 (cut at the N-1 longest pauses): failed to recover long clips.** 256 source clips gave 143 train + 16 validation + 14 test segments, 0.45 h in total, about what the clips under 20 s alone provide. 100 long clips failed the duration/rate check and only 1 had too few pauses, so the pauses exist but the wrong ones were chosen. Likely cause: the speaker also pauses inside sentences, and those breath pauses can be longer than the gaps between sentences. 14 segments were dropped for unsupported characters or digits.
+
+**Fix:** `choose_cuts` picks the pauses that make each segment's duration proportional to its sentence's length in characters (dynamic programming, with a small preference for longer pauses). On 150 synthetic clips with breath pauses of 0.25–0.9 s inside sentences, every cut was right in 83% of clips, against 16% for the longest-pauses rule. The old rule's synthetic yield is close to the ~15% yield seen on real data, which supports the diagnosis. The 83% is on synthetic audio, so real yield is still unmeasured. `--longest-pauses` reproduces the old behaviour for comparison, and `long_clip_diagnostics.tsv` records the outcome per long clip.
+
+**If the yield is still low:** forced alignment with a CTC model (torchaudio `MMS_FA`) would remove the dependence on pauses. It needs a GPU runtime, and it can't be tested in the sandbox.
+
 ## Constraints
 
 - The sandbox can't reach the data hosts or run models, so data prep and training run on **Colab free tier**.

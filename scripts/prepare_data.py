@@ -3,9 +3,10 @@
     python scripts/prepare_data.py --speaker 2 --out /content/drive/MyDrive/akan_tts/data
 
 Per clip: short clips (<= --max-sec) are kept whole, trimmed. Longer clips are cut at
-sentence pauses (akantts.segment) and kept only if every segment passes a duration and
-speaking-rate check; otherwise the whole clip is dropped, because a wrong cut would pair
-text with the wrong audio. Text is normalized and rejected if it has characters the model
+sentence pauses chosen to match each sentence's length (akantts.segment) and kept only if
+every segment passes a duration and speaking-rate check; otherwise the whole clip is dropped,
+because a wrong cut would pair text with the wrong audio. long_clip_diagnostics.tsv records
+the outcome and each segment's duration and rate for every long clip. Text is normalized and rejected if it has characters the model
 cannot take (akantts.normalize.to_model_text). Output: 16 kHz mono wavs plus metadata.tsv
 (file, split, source_id, text, seconds) and prepare_report.json with every drop reason.
 The original WAXAL split of the source clip is kept, so segments of one clip never straddle
@@ -24,7 +25,7 @@ import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from akantts.normalize import to_model_text  # noqa: E402
-from akantts.segment import plausible, sentences, split_by_pauses  # noqa: E402
+from akantts.segment import check_segments, sentences, split_by_pauses  # noqa: E402
 
 TARGET_SR = 16000
 KEEP_PUNCT = set(".,?!")
@@ -49,6 +50,8 @@ def main():
     ap.add_argument("--rate", type=float, default=None,
                     help="speaker median chars/s; default: measured on this speaker's short clips")
     ap.add_argument("--min-pause", type=float, default=0.2)
+    ap.add_argument("--longest-pauses", action="store_true",
+                    help="old rule: cut at the longest pauses, ignoring sentence lengths (for comparison)")
     args = ap.parse_args()
 
     allowed = set(AutoTokenizer.from_pretrained("facebook/mms-tts-aka").get_vocab()) | KEEP_PUNCT
@@ -73,7 +76,7 @@ def main():
     rate = args.rate or float(np.median(rates))
     print(f"median speaking rate: {rate:.2f} chars/s (from {len(rates)} short clips)")
 
-    drops, meta, hours = Counter(), [], Counter()
+    drops, meta, hours, diag = Counter(), [], Counter(), []
     for split, r in rows:
         wav, sr = decode(r)
         dur, sents = len(wav) / sr, sentences(r["text"])
@@ -83,12 +86,17 @@ def main():
         if dur <= args.max_sec:
             parts, texts = split_by_pauses(wav, sr, 1), [" ".join(sents)]
         else:
-            parts, texts = split_by_pauses(wav, sr, len(sents), args.min_pause), sents
+            chars = None if args.longest_pauses else [len(s) for s in sents]
+            parts, texts = split_by_pauses(wav, sr, len(sents), args.min_pause, chars), sents
             if parts is None:
                 drops["long clip: too few pauses for its sentences"] += 1
+                diag.append((r["id"], split, round(dur, 1), len(sents), "too few pauses", ""))
                 continue
-            if not plausible(parts, texts, rate, min_sec=args.min_sec, max_sec=args.max_sec):
-                drops["long clip: segments failed duration/rate check"] += 1
+            reason = check_segments(parts, texts, rate, min_sec=args.min_sec, max_sec=args.max_sec)
+            diag.append((r["id"], split, round(dur, 1), len(sents), reason or "ok",
+                         " ".join(f"{b - a:.1f}s/{len(t) / (b - a):.1f}cps" for (a, b), t in zip(parts, texts))))
+            if reason:
+                drops[f"long clip: {reason}"] += 1
                 continue
         if parts is None:
             drops["no speech found"] += 1
@@ -113,6 +121,10 @@ def main():
         w = csv.writer(f, delimiter="\t", quoting=csv.QUOTE_NONE, escapechar="\\")
         w.writerow(["file", "split", "source_id", "text", "seconds"])
         w.writerows(meta)
+    with open(out / "long_clip_diagnostics.tsv", "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f, delimiter="\t")
+        w.writerow(["source_id", "split", "seconds", "sentences", "result", "segments (duration/rate)"])
+        w.writerows(diag)
     report = {
         "speaker": args.speaker, "source_clips": len(rows), "median_rate_chars_per_s": round(rate, 3),
         "segments": Counter(m[1] for m in meta), "hours": {k: round(v, 3) for k, v in hours.items()},

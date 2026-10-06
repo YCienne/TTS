@@ -39,6 +39,26 @@ def test_cuts_at_longest_pauses_not_short_ones():
         assert abs(a - ea) < 0.1 and abs(b - eb) < 0.1
 
 
+def test_text_lengths_beat_a_long_pause_inside_a_sentence():
+    # Sentences of 20, 60 and 30 characters. The middle one has a 0.9 s breath pause that is
+    # longer than both real sentence gaps (0.5 s), which fools "cut at the longest pauses".
+    wav = _clip([(0.3, 0), (2.0, 1), (0.5, 0), (3.0, 1), (0.9, 0), (3.0, 1), (0.5, 0), (3.0, 1), (0.3, 0)])
+    naive = split_by_pauses(wav, SR, 3)
+    assert any(abs(b - 5.95) < 0.1 for _, b in naive)  # the breath pause (5.8-6.7) became a cut
+    parts = split_by_pauses(wav, SR, 3, chars=[20, 60, 30])
+    # real gaps: 2.3-2.8 s and 9.7-10.2 s, each keeps 0.15 s of silence per side
+    expected = [(0.15, 2.45), (2.65, 9.85), (10.05, 13.35)]
+    assert len(parts) == 3
+    for (a, b), (ea, eb) in zip(parts, expected):
+        assert abs(a - ea) < 0.12 and abs(b - eb) < 0.12
+
+
+def test_choose_cuts_none_when_too_few_pauses():
+    from akantts.segment import choose_cuts
+
+    assert choose_cuts([(1.0, 1.5)], (0.0, 10.0), [10, 10, 10]) is None
+
+
 def test_single_sentence_is_trimmed_not_cut():
     wav = _clip([(1.0, 0), (2.0, 1), (1.0, 0)])
     (a, b), = split_by_pauses(wav, SR, 1)
@@ -54,3 +74,7 @@ def test_plausible_checks_rate_and_length():
     assert plausible(parts, texts, median_rate=8.0)
     assert not plausible(parts, ["a" * 4, "a" * 32], median_rate=8.0)  # 1 char/s
     assert not plausible([(0.0, 30.0)], ["a" * 240], median_rate=8.0)  # too long
+    from akantts.segment import check_segments
+
+    assert check_segments(parts, ["a" * 4, "a" * 32], 8.0) == "speaking rate too low"
+    assert check_segments([(0.0, 0.5)], ["a" * 4], 8.0) == "segment too short"
