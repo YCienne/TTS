@@ -50,4 +50,4 @@ def test_flags():
     assert "low SNR (<25 dB)" in flags({"snr_db_median": 10})
     assert flags({"snr_db_median": 40, "f0_median_hz": 110}, "Male") == []
     assert any("male" in f for f in flags({"snr_db_median": 40, "f0_median_hz": 220}, "Male"))
-    assert any("mixed" in f for f in flags({"f0_clip_median_std_hz": 40}))
+    assert flags({"snr_db_median": 40, "f0_clip_median_std_hz": 60}) == []  # informational only

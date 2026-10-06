@@ -53,6 +53,23 @@ def normalize(text: str, lowercase: bool = True, drop_brackets: bool = True) -> 
     return _WS.sub(" ", text).strip()
 
 
+_TO_COMMA = {ord(";"): ",", ord(":"): ","}
+_DROPPED = {ord(c): None for c in '"()`\\/'}
+
+
+def to_model_text(text: str, allowed):
+    """``normalize`` plus punctuation clean-up for the model, or None if the text is unusable.
+
+    ``;`` and ``:`` become commas, quotes and brackets are dropped. Text is rejected if it still
+    contains a character outside ``allowed`` (the model vocabulary plus kept punctuation) or any
+    digit, because digits are not spoken as written in these recordings.
+    """
+    text = _WS.sub(" ", normalize(text).translate(_TO_COMMA).translate(_DROPPED)).strip()
+    if not text or find_digits(text) or any(c not in allowed for c in text):
+        return None
+    return text
+
+
 def find_digits(text: str) -> bool:
     """True if the text still contains digits, i.e. needs number expansion."""
     return bool(_DIGIT.search(text))

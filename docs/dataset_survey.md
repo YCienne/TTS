@@ -40,6 +40,22 @@ Note: there is **no `aka_tts` config**. The Akan TTS data is the separate `twi_t
 | Orthography uses final ɛ/ɔ (`deɛ`, `ahodoɔ`, `Ghanafoɔ`) | Consistent with the Asante Twi convention, but **not confirmed**. A native speaker should check the audio and spelling. |
 | Same 4 speakers in train, validation and test | Fine for TTS. It means validation is not a held-out-speaker test. |
 
+## Colab audit (2026-10-06)
+
+Train split, per speaker. "Usable" is hours in clips of at most 20 s. The SNR-like figure is the gap between the loudest and quietest 10% of frames, so treat it as a ranking, not a measurement.
+
+| Speaker | Gender | Hours | Usable <=20 s | Usable <=30 s | SNR-like (dB) | Noise floor (dB) | Silence | chars/s |
+|---|---|---|---|---|---|---|---|---|
+| 1 | M | 2.13 | 0.36 (17%) | 0.52 | 40.3 | -61.6 | 47% | 8.1 |
+| **2** | F | 2.62 | 0.38 (14%) | 0.59 | **50.7** | **-78.4** | 44% | 7.6 |
+| 3 | M | 2.08 | 0.58 (28%) | 0.66 | 43.6 | -65.3 | 42% | 7.8 |
+| 4 | F | 2.03 | 0.41 (20%) | 0.69 | 35.1 | -56.5 | 29% | 10.3 |
+
+- No clipping anywhere. Speaker 2 is the cleanest, speaker 4 the noisiest and fastest.
+- **Usable data is the problem.** At most 0.58 h of any speaker is in clips of 20 s or less. Training on those alone would be about 20–35 minutes of one voice. Hence `scripts/prepare_data.py`, which cuts long clips at sentence pauses.
+- After normalization only 17 of 872 train utterances still contain digits (bracket stripping works). Left over: `c` (90 utterances), `j` (51), `"` (49), `v` (41), `;` (31), `z` (25), brackets and a few others. `;` and `:` become commas, quotes and brackets are dropped, and utterances with `c j v z q x` or bare digits are rejected.
+- **Pitch is not usable yet.** Median F0 looked plausible for speaker 2 (219 Hz) and 1 (139 Hz), but within-clip spread of 9–12 semitones (normal read speech is about 2–4) means the tracker made octave errors. The "possible mixed voices" flag fired on all four speakers, so it was removed. Pitch should not drive the speaker choice.
+
 ## Constraints
 
 - The sandbox can't reach the data hosts or run models, so data prep and training run on **Colab free tier**.

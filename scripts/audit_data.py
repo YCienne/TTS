@@ -28,6 +28,7 @@ CAPS = (10, 15, 20, 30)
 KEEP_PUNCT = set(".,?!")
 SAMPLES_PER_SPEAKER = 3
 PITCH_SECONDS = 20  # pitch tracking is slow, so only the first seconds of a few clips
+PITCH_RANGE = {"Male": (65, 250), "Female": (120, 400)}  # narrower search range limits octave errors
 
 
 def _med(xs):
@@ -95,7 +96,7 @@ def main():
             if text:
                 s["rate"].append(len(text) / dur)
             if split == "train" and len(s["pitch"]) < args.pitch_clips and 2 <= dur <= 30:
-                p = pitch_stats(wav[: PITCH_SECONDS * sr], sr)
+                p = pitch_stats(wav[: PITCH_SECONDS * sr], sr, *PITCH_RANGE.get(s["gender"], (60, 400)))
                 if p:
                     s["pitch"].append(p)
             empty += not text

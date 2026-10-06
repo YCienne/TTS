@@ -44,6 +44,17 @@ def test_bracketed_annotations_are_dropped():
     assert "[10]" in normalize("[10] du", drop_brackets=False)
 
 
+def test_to_model_text():
+    from akantts.normalize import to_model_text
+
+    allowed = set("abdefghiklmnoprstuwy ɛɔ'-.,?!")
+    assert to_model_text('Ɛyɛ "dɛ": yie; (ana)?', allowed) == "ɛyɛ dɛ, yie, ana?"
+    assert to_model_text("Ɛyɛ [5] dɛ", allowed) == "ɛyɛ dɛ"  # bracketed digits dropped first
+    assert to_model_text("afe 2006", allowed) is None  # bare digits
+    assert to_model_text("Jesu yɛ", allowed) is None  # j is outside the vocabulary
+    assert to_model_text("[1]", allowed) is None  # nothing left
+
+
 def test_find_digits():
     assert find_digits("yɛn ho 2026")
     assert not find_digits("yɛn ho")

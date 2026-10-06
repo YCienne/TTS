@@ -1,10 +1,11 @@
-# Data selection for fine-tuning. Facts below come from reports/verify.json (Colab run, 2026-10-06).
+# Data selection for fine-tuning. Facts below come from the Colab runs of 2026-10-06 (verify + audit).
 dataset: google/WaxalNLP
 config: twi_tts              # Twi (University of Ghana, CC-BY-4.0); 872 / 117 / 104 utterances
 source_sampling_rate: 48000
 target_sampling_rate: 16000  # facebook/mms-tts-aka runs at 16 kHz
-speaker_id: null             # TODO: decide after scripts/audit_data.py. Speakers 1 M, 2 F, 3 M, 4 F, ~2-2.6 h each in train.
-duration_sec: {min: 2.0, max: 20.0}  # TODO: median clip is 16.5 s but p90 is 99 s; confirm cap from the audit
+speaker_id: "2"              # female; cleanest recording (SNR-like gap 50.7 dB, noise floor -78 dB). Confirm by ear.
+duration_sec: {min: 1.0, max: 20.0}
+split_long_clips: true       # only 14-28% of each speaker's audio is in clips <= 20 s, so cut at sentence pauses
 lowercase: true              # MMS vocabulary is lowercase
 drop_brackets: true          # "[10] du" -> "du"; the spoken words follow the bracketed digits
 keep_punctuation: ".,?!"     # not in the MMS vocabulary, so the embedding table must be extended

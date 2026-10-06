@@ -66,6 +66,6 @@ def flags(summary: dict, gender: str = "") -> list:
             out.append("F0 high for a male label")
         if gender == "Female" and f0 < 150:
             out.append("F0 low for a female label")
-    if summary.get("f0_clip_median_std_hz", 0) > 25:
-        out.append("F0 varies a lot between clips: possible mixed voices")
+    # Between-clip F0 spread is reported but deliberately not flagged: pyin octave errors
+    # made it fire on every speaker of a real corpus, so it cannot separate mixed voices.
     return out
