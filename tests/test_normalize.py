@@ -32,6 +32,18 @@ def test_idempotent():
     assert normalize(normalize(s)) == normalize(s)
 
 
+def test_reversed_c_becomes_open_o():
+    assert normalize("ↄkↄ Ↄ", lowercase=False) == "ɔkɔ Ɔ"
+
+
+def test_bracketed_annotations_are_dropped():
+    s = "[10] Du [×] ahodoɔ [10] du [=] ma yɛn [100] ɔha."
+    assert normalize(s) == "du ahodoɔ du ma yɛn ɔha."
+    assert not find_digits(normalize(s))
+    assert normalize("Abɔ [5:00pm] awia\n\nnnɔn") == "abɔ awia nnɔn"
+    assert "[10]" in normalize("[10] du", drop_brackets=False)
+
+
 def test_find_digits():
     assert find_digits("yɛn ho 2026")
     assert not find_digits("yɛn ho")

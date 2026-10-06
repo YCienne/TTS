@@ -1,8 +1,11 @@
-# Data selection for fine-tuning. Values marked TODO are fixed after scripts/verify_resources.py has been run.
+# Data selection for fine-tuning. Facts below come from reports/verify.json (Colab run, 2026-10-06).
 dataset: google/WaxalNLP
-config: twi_tts            # Twi (University of Ghana, CC-BY-4.0)
-speaker_id: null           # TODO: single speaker with most clean hours (from verify.json)
-target_sampling_rate: 16000  # TODO: must match facebook/mms-tts-aka (verify.json -> mms_aka.sampling_rate)
-duration_sec: {min: 1.0, max: 15.0}
-lowercase: true            # MMS vocabularies are lowercase
+config: twi_tts              # Twi (University of Ghana, CC-BY-4.0); 872 / 117 / 104 utterances
+source_sampling_rate: 48000
+target_sampling_rate: 16000  # facebook/mms-tts-aka runs at 16 kHz
+speaker_id: null             # TODO: decide after scripts/audit_data.py. Speakers 1 M, 2 F, 3 M, 4 F, ~2-2.6 h each in train.
+duration_sec: {min: 2.0, max: 20.0}  # TODO: median clip is 16.5 s but p90 is 99 s; confirm cap from the audit
+lowercase: true              # MMS vocabulary is lowercase
+drop_brackets: true          # "[10] du" -> "du"; the spoken words follow the bracketed digits
+keep_punctuation: ".,?!"     # not in the MMS vocabulary, so the embedding table must be extended
 base_model: facebook/mms-tts-aka   # CC-BY-NC-4.0
