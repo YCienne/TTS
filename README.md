@@ -30,7 +30,7 @@ Training and data download run on Colab, because the data hosts need Hub access.
 ## Acknowledgements and licences
 - **Base model:** [`facebook/mms-tts-aka`](https://huggingface.co/facebook/mms-tts-aka), Meta MMS (Pratap et al., 2023), CC-BY-NC-4.0. Non-commercial use only.
 - **Data:** [WAXAL](https://huggingface.co/datasets/google/WaxalNLP) (Google Research with the University of Ghana), `twi_tts`, CC-BY-4.0.
-- **Training code:** the VITS training loop, discriminator code and checkpoint conversion are from [`ylacombe/finetune-hf-vits`](https://github.com/ylacombe/finetune-hf-vits) (MIT licence file in that repo), cloned at run time and not copied here.
+- **Training code:** the VITS training loop, discriminator code and checkpoint conversion are from [`ylacombe/finetune-hf-vits`](https://github.com/ylacombe/finetune-hf-vits) (MIT licence, copyright 2023 Yoach Lacombe), cloned at run time and not copied here.
 - **Speech recogniser used for checks:** `facebook/mms-1b-all` with the `aka` adapter (CC-BY-NC-4.0).
 - **Libraries:** Hugging Face `transformers`, `datasets`, `accelerate`.
 - Our own work: text normalization, segmentation of long clips, data selection and filtering, ASR-based alignment check, vocabulary extension, training configuration, inference script, evaluation, and this repository.
