@@ -21,14 +21,26 @@ PAD_SEC = 0.15  # silence kept on each side of a segment
 _SENTENCE_END = re.compile(r"(?<=[.?!])\s+")
 
 
-def sentences(raw: str) -> list:
-    """Normalized sentences of ``raw``, split on line breaks and ``. ? !``."""
+_CLAUSE_END = re.compile(r"(?<=[.?!,;:])\s+")
+
+
+def _split(raw: str, pattern) -> list:
     out = []
     for line in raw.splitlines():
         line = normalize(line)
         if line:
-            out.extend(s for s in _SENTENCE_END.split(line) if s)
+            out.extend(s for s in pattern.split(line) if s)
     return out
+
+
+def sentences(raw: str) -> list:
+    """Normalized sentences of ``raw``, split on line breaks and ``. ? !``."""
+    return _split(raw, _SENTENCE_END)
+
+
+def clauses(raw: str) -> list:
+    """Like ``sentences`` but also split after ``, ; :``, for sentences too long for one segment."""
+    return _split(raw, _CLAUSE_END)
 
 
 def speech_activity(wav: np.ndarray, sr: int) -> np.ndarray:

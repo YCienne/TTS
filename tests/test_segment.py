@@ -27,6 +27,14 @@ def test_sentences_split_on_punctuation_and_newlines():
     assert sentences("") == []
 
 
+def test_clauses_split_at_commas_too():
+    from akantts.segment import clauses
+
+    raw = "Sɛ wo kɔ fie a, ka kyerɛ me; Mehunu mununkum. Ɛyɛ dɛ?"
+    assert clauses(raw) == ["sɛ wo kɔ fie a,", "ka kyerɛ me;", "mehunu mununkum.", "ɛyɛ dɛ?"]
+    assert len(sentences(raw)) == 2  # ";" and "," do not end a sentence
+
+
 def test_cuts_at_longest_pauses_not_short_ones():
     # three sentences; a 0.25 s comma pause inside the second one must not become a cut
     wav = _clip([(0.5, 0), (1.0, 1), (0.8, 0), (0.7, 1), (0.25, 0), (0.8, 1), (0.6, 0), (1.2, 1), (0.5, 0)])

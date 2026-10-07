@@ -62,6 +62,12 @@ Train split, per speaker. "Usable" is hours in clips of at most 20 s. The SNR-li
 
 **Fix:** `choose_cuts` picks the pauses that make each segment's duration proportional to its sentence's length in characters (dynamic programming, with a small preference for longer pauses). On 150 synthetic clips with breath pauses of 0.25–0.9 s inside sentences, every cut was right in 83% of clips, against 16% for the longest-pauses rule. The old rule's synthetic yield is close to the ~15% yield seen on real data, which supports the diagnosis. The 83% is on synthetic audio, so real yield is still unmeasured. `--longest-pauses` reproduces the old behaviour for comparison, and `long_clip_diagnostics.tsv` records the outcome per long clip.
 
+**Run 2 (length-aware cuts): yield doubled.** 364 train + 25 validation + 32 test segments = 0.97 h (train 0.84 h). Of the 117 long clips, 58 passed, 33 failed "speaking rate too high", 25 failed "segment too long", 1 had too few pauses. 21 segments were dropped for unsupported characters or digits.
+
+Two problems in the diagnostics. (1) The rate reference was biased: the 6.79 chars/s median came from whole short clips with leading and trailing silence, while trimmed segments run at 9–11 chars/s, so the 1.8x limit rejected clips that were probably cut correctly. The reference is now measured on trimmed speech spans. (2) Some failures are single sentences longer than 20 s (for example one 27.5 s clip with 1 sentence); these are now retried by also cutting at commas (`--no-clauses` turns that off). Both changes are untested on the real data. Whether a cut is *correct*, as opposed to passing the checks, is only known by listening.
+
+**Training recipe.** No Akan training checkpoint with a discriminator exists on the Hub (`ylacombe/mms-tts-*-train` covers eng, fra, kor, mar, guj, spa, tam, acd and a few others). It would have to be converted from Meta's original MMS release; whether that download includes the discriminator weights is unverified (notebook 03 checks). The `ylacombe/finetune-hf-vits` recipe reports good fine-tunes from 80–150 samples, so about an hour of data is workable. HF `transformers` `VitsModel` has no training loss, so the training loop and discriminator come from that open-source repo, which the report must acknowledge as reused code.
+
 **If the yield is still low:** forced alignment with a CTC model (torchaudio `MMS_FA`) would remove the dependence on pauses. It needs a GPU runtime, and it can't be tested in the sandbox.
 
 ## Constraints

@@ -25,7 +25,7 @@ import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from akantts.normalize import to_model_text  # noqa: E402
-from akantts.segment import check_segments, sentences, split_by_pauses  # noqa: E402
+from akantts.segment import check_segments, clauses, sentences, split_by_pauses  # noqa: E402
 
 TARGET_SR = 16000
 KEEP_PUNCT = set(".,?!")
@@ -50,6 +50,8 @@ def main():
     ap.add_argument("--rate", type=float, default=None,
                     help="speaker median chars/s; default: measured on this speaker's short clips")
     ap.add_argument("--min-pause", type=float, default=0.2)
+    ap.add_argument("--no-clauses", action="store_true",
+                    help="do not retry over-long sentences by also cutting at commas")
     ap.add_argument("--longest-pauses", action="store_true",
                     help="old rule: cut at the longest pauses, ignoring sentence lengths (for comparison)")
     args = ap.parse_args()
@@ -66,15 +68,18 @@ def main():
         rows += [(split, r) for r in ds]
     print(f"{len(rows)} source clips for speaker {args.speaker}")
 
-    # speaking rate from clips that need no cutting
+    # Speaking rate over each clip's trimmed speech span, measured the same way as the segments
+    # (run 2 measured it on whole clips with leading/trailing silence: 6.8 chars/s, against 9-11
+    # for the trimmed segments, so the rate check rejected correct cuts).
     rates = []
     for _, r in rows:
         wav, sr = decode(r)
         sents = sentences(r["text"])
-        if sents and len(wav) / sr <= args.max_sec:
-            rates.append(len(" ".join(sents)) / (len(wav) / sr))
+        span = split_by_pauses(wav, sr, 1) if sents else None
+        if span:
+            rates.append(len(" ".join(sents)) / (span[0][1] - span[0][0]))
     rate = args.rate or float(np.median(rates))
-    print(f"median speaking rate: {rate:.2f} chars/s (from {len(rates)} short clips)")
+    print(f"median speaking rate: {rate:.2f} chars/s (trimmed spans of {len(rates)} clips)")
 
     drops, meta, hours, diag = Counter(), [], Counter(), []
     for split, r in rows:
@@ -93,11 +98,21 @@ def main():
                 diag.append((r["id"], split, round(dur, 1), len(sents), "too few pauses", ""))
                 continue
             reason = check_segments(parts, texts, rate, min_sec=args.min_sec, max_sec=args.max_sec)
-            diag.append((r["id"], split, round(dur, 1), len(sents), reason or "ok",
+            level = "sentences"
+            if reason == "segment too long" and not args.no_clauses:
+                # a sentence longer than max-sec: retry cutting at commas as well
+                cl = clauses(r["text"])
+                cparts = split_by_pauses(wav, sr, len(cl), args.min_pause, [len(c) for c in cl])
+                if cparts and check_segments(cparts, cl, rate, min_sec=args.min_sec, max_sec=args.max_sec) is None:
+                    parts, texts, reason, level = cparts, cl, None, "clauses"
+            diag.append((r["id"], split, round(dur, 1), len(sents),
+                         f"ok ({level})" if reason is None else reason,
                          " ".join(f"{b - a:.1f}s/{len(t) / (b - a):.1f}cps" for (a, b), t in zip(parts, texts))))
             if reason:
                 drops[f"long clip: {reason}"] += 1
                 continue
+            if level == "clauses":
+                drops["(kept) long clip recovered by cutting at commas"] += 1
         if parts is None:
             drops["no speech found"] += 1
             continue
