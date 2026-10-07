@@ -55,6 +55,25 @@ def test_to_model_text():
     assert to_model_text("[1]", allowed) is None  # nothing left
 
 
+def test_to_inference_text_drops_what_the_model_cannot_say():
+    from akantts.normalize import to_inference_text
+
+    with_punct = set("abdefghiklmnoprstuwy ɛɔ'-.,?!")
+    assert to_inference_text('Ɛyɛ "dɛ": yie!', with_punct) == ("ɛyɛ dɛ, yie!", [])
+    # digits and the letter v are outside this vocabulary, so they are dropped and reported
+    assert to_inference_text("Afe 2006 vɛ.", with_punct) == ("afe ɛ.", ["0", "2", "6", "v"])
+    # a vocabulary without punctuation silently loses it, and says so
+    text, removed = to_inference_text("yie, yie.", set("yie "))
+    assert text == "yie yie" and removed == [",", "."]
+
+
+def test_strip_punctuation():
+    from akantts.normalize import strip_punctuation
+
+    assert strip_punctuation("sɛ wo kɔ fie a, ka kyerɛ me. ɛyɛ dɛ?") == "sɛ wo kɔ fie a ka kyerɛ me ɛyɛ dɛ"
+    assert strip_punctuation("yie , ! ?") == "yie"
+
+
 def test_find_digits():
     assert find_digits("yɛn ho 2026")
     assert not find_digits("yɛn ho")

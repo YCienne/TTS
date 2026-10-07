@@ -70,6 +70,27 @@ def to_model_text(text: str, allowed):
     return text
 
 
+def to_inference_text(text: str, vocab):
+    """Forgiving counterpart of ``to_model_text`` for synthesis: ``(text, removed)``.
+
+    Applies the same normalization, then drops every character the model's vocabulary cannot
+    represent instead of rejecting the text. ``removed`` lists the dropped characters (digits
+    among them: numbers are not expanded) so the caller can warn.
+    """
+    text = normalize(text).translate(_TO_COMMA).translate(_DROPPED)
+    removed = sorted({c for c in text if c not in vocab})
+    text = _WS.sub(" ", "".join(c for c in text if c in vocab)).strip()
+    return text, removed
+
+
+_PUNCT_RE = re.compile(r"[.,?!]")
+
+
+def strip_punctuation(text: str) -> str:
+    """Remove ``. , ? !`` for a model whose vocabulary has no punctuation tokens."""
+    return _WS.sub(" ", _PUNCT_RE.sub("", text)).strip()
+
+
 def find_digits(text: str) -> bool:
     """True if the text still contains digits, i.e. needs number expansion."""
     return bool(_DIGIT.search(text))
