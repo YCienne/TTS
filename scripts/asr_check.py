@@ -41,32 +41,40 @@ def load_asr(device):
 
 
 def main():
-    import torch
-
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True, help="output folder of prepare_data.py")
     ap.add_argument("--splits", nargs="+", default=["train", "validation", "test"])
     ap.add_argument("--drop-above", type=float, default=None, help="CER above which segments are dropped")
+    ap.add_argument("--reuse", action="store_true",
+                    help="reuse asr_cer.tsv from an earlier run instead of transcribing again")
     args = ap.parse_args()
 
     data = Path(args.data)
     with open(data / "metadata.tsv", encoding="utf-8", newline="") as f:
         rows = [r for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE) if r["split"] in args.splits]
-    transcribe = load_asr("cuda" if torch.cuda.is_available() else "cpu")
 
-    scored = []
-    for i, r in enumerate(rows):
-        wav, sr = sf.read(data / r["file"], dtype="float32")
-        hyp = transcribe(wav, sr)
-        scored.append({**r, "cer": cer(r["text"], hyp), "wer": wer(r["text"], hyp), "transcript": hyp})
-        if i % 100 == 0:
-            print(f"{i}/{len(rows)}", flush=True)
+    cache = data / "asr_cer.tsv"
+    if args.reuse and cache.exists():
+        with open(cache, encoding="utf-8", newline="") as f:
+            by_file = {r["file"]: r for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE)}
+        scored = [{**r, "cer": float(by_file[r["file"]]["cer"])} for r in rows if r["file"] in by_file]
+        print(f"reusing {len(scored)} scores from {cache}")
+    else:
+        import torch  # only needed to transcribe, so --reuse works without the ML stack
 
-    with open(data / "asr_cer.tsv", "w", encoding="utf-8", newline="") as f:
-        w = csv.writer(f, delimiter="\t", quoting=csv.QUOTE_NONE, escapechar="\\")
-        w.writerow(["file", "split", "cer", "wer", "reference", "transcript"])
-        w.writerows([(s["file"], s["split"], round(s["cer"], 4), round(s["wer"], 4), s["text"], s["transcript"])
-                     for s in scored])
+        transcribe = load_asr("cuda" if torch.cuda.is_available() else "cpu")
+        scored = []
+        for i, r in enumerate(rows):
+            wav, sr = sf.read(data / r["file"], dtype="float32")
+            hyp = transcribe(wav, sr)
+            scored.append({**r, "cer": cer(r["text"], hyp), "wer": wer(r["text"], hyp), "transcript": hyp})
+            if i % 100 == 0:
+                print(f"{i}/{len(rows)}", flush=True)
+        with open(cache, "w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f, delimiter="\t", quoting=csv.QUOTE_NONE, escapechar="\\")
+            w.writerow(["file", "split", "cer", "wer", "reference", "transcript"])
+            w.writerows([(s["file"], s["split"], round(s["cer"], 4), round(s["wer"], 4), s["text"], s["transcript"])
+                         for s in scored])
 
     c = np.array([s["cer"] for s in scored])
     print(f"\n{len(c)} segments. CER percentiles (10/25/50/75/90/95): "
@@ -81,6 +89,11 @@ def main():
             w.writerow(["file", "split", "source_id", "text", "seconds"])
             w.writerows([(s["file"], s["split"], s["source_id"], s["text"], s["seconds"]) for s in kept])
         print(f"kept {len(kept)}/{len(scored)} at CER <= {args.drop_above}")
+        for split in args.splits:
+            k = [s for s in kept if s["split"] == split]
+            a = [s for s in scored if s["split"] == split]
+            print(f"  {split}: {len(k)}/{len(a)} segments, "
+                  f"{sum(float(s['seconds']) for s in k) / 3600:.2f} h of {sum(float(s['seconds']) for s in a) / 3600:.2f} h")
 
 
 if __name__ == "__main__":
