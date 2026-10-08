@@ -2,13 +2,16 @@
 
     python scripts/make_audiofolder.py --data <prepare output> --out /content/aka_ds [--strip-punct]
 
-Layout written: <out>/{train,validation,test}/metadata.csv plus the wavs, with the columns
-file_name and text. ``load_dataset("<out>")`` then gives an ``audio`` column and a ``text``
-column per split. Uses metadata_filtered.tsv when it exists (written by asr_check.py), else
+Layout written: <out>/{train,validation,test}/metadata.jsonl plus the wavs, one JSON object per
+line with the keys file_name and text. ``load_dataset("<out>")`` then gives an ``audio`` column and a
+``text`` column per split. JSON Lines is used instead of CSV because the loader reads CSV metadata through
+pandas, and pandas 3 turns text columns into Arrow large_string, which the loader rejects
+("`file_name` key must be a string"). Uses metadata_filtered.tsv when it exists (written by asr_check.py), else
 metadata.tsv. --strip-punct removes ". , ? !" for a model whose vocabulary lacks them.
 """
 import argparse
 import csv
+import json
 import shutil
 import sys
 from collections import Counter
@@ -41,12 +44,11 @@ def main():
         split = r["split"]
         if split not in writers:
             (out / split).mkdir(parents=True, exist_ok=True)
-            handles[split] = open(out / split / "metadata.csv", "w", encoding="utf-8", newline="")
-            writers[split] = csv.writer(handles[split])
-            writers[split].writerow(["file_name", "text"])
+            handles[split] = open(out / split / "metadata.jsonl", "w", encoding="utf-8")
+            writers[split] = handles[split]
         name = Path(r["file"]).name
         shutil.copy(data / r["file"], out / split / name)
-        writers[split].writerow([name, text])
+        writers[split].write(json.dumps({"file_name": name, "text": text}, ensure_ascii=False) + "\n")
         counts[split] += 1
     for h in handles.values():
         h.close()

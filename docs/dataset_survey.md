@@ -84,6 +84,8 @@ Passing the duration and rate checks does not prove the cuts are right. `scripts
 
 A connection-test report from the GPU runtime: Tesla T4, 15360 MiB, driver 580.82.07; system Python 3.13.15 (so the training recipe runs in a uv-built Python 3.11 environment, because torch 2.4.1 has no wheels for 3.13); 12 GiB RAM; 71 GiB free disk. Drive was not mounted in that cell, so the Drive listing was empty; this does not show whether the prepared data survived. Earlier runtimes (CPU-only, `cuda False`) could not train.
 
+**Dataset loader bug (datasets 2.21.0 with pandas 3).** Loading the audiofolder failed with "`file_name` key must be a string". Reproduced in a throwaway environment: the loader reads CSV metadata through pandas, pandas 3 yields Arrow large_string, and the loader rejects it; the same dataset as `metadata.jsonl` loads fine. `make_audiofolder.py` now writes JSON Lines, and the training environment pins `pandas<3`.
+
 ## Constraints
 
 - The sandbox can't reach the data hosts or run models, so data prep and training run on **Colab free tier**.
