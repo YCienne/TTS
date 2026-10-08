@@ -28,3 +28,19 @@ Text files keep their last 400 lines (`--tail`). Each report goes to `logs/<time
 The token reaches git through environment variables, so it appears in no command line, remote URL or message. The helper
 writes only to `colab-logs`, but a token with Contents write access could push to any branch, which is why it should be
 short-lived and scoped to this one repository.
+
+## Connection test (also reports the GPU and what is on Drive)
+Paste into any Colab cell. The secret may be named `GITHUB_TOKEN` or `colablogs`.
+```python
+import os, subprocess
+from google.colab import userdata
+for secret in ("GITHUB_TOKEN", "colablogs"):
+    try:
+        os.environ["GITHUB_TOKEN"] = userdata.get(secret); print("using secret:", secret); break
+    except Exception as e:
+        print(f"secret {secret!r}: {type(e).__name__}")
+!test -d /content/tts && git -C /content/tts pull -q || git clone -q https://github.com/YCienne/TTS.git /content/tts
+!(echo "== GPU =="; nvidia-smi -L; nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv; echo; echo "== system =="; python --version; free -h | head -2; df -h /content | tail -1; echo; echo "== Drive =="; ls /content/drive/MyDrive/akan_tts 2>&1; ls /content/drive/MyDrive/akan_tts/data 2>&1; ls /content/drive/MyDrive/akan_tts/ckpt 2>&1) > /content/env_report.txt 2>&1
+!python /content/tts/scripts/colab_report.py --name connection_test --files /content/env_report.txt
+```
+It should end with `pushed 1 file(s) to branch colab-logs`.
