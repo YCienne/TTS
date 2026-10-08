@@ -80,6 +80,10 @@ Passing the duration and rate checks does not prove the cuts are right. `scripts
 
 **If the yield is still low:** forced alignment with a CTC model (torchaudio `MMS_FA`) would remove the dependence on pauses. It needs a GPU runtime, and it can't be tested in the sandbox.
 
+## Colab runtime (checked 2026-10-08)
+
+A connection-test report from the GPU runtime: Tesla T4, 15360 MiB, driver 580.82.07; system Python 3.13.15 (so the training recipe runs in a uv-built Python 3.11 environment, because torch 2.4.1 has no wheels for 3.13); 12 GiB RAM; 71 GiB free disk. Drive was not mounted in that cell, so the Drive listing was empty; this does not show whether the prepared data survived. Earlier runtimes (CPU-only, `cuda False`) could not train.
+
 ## Constraints
 
 - The sandbox can't reach the data hosts or run models, so data prep and training run on **Colab free tier**.
