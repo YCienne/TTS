@@ -86,6 +86,8 @@ A connection-test report from the GPU runtime: Tesla T4, 15360 MiB, driver 580.8
 
 **Dataset loader bug (datasets 2.21.0 with pandas 3).** Loading the audiofolder failed with "`file_name` key must be a string". Reproduced in a throwaway environment: the loader reads CSV metadata through pandas, pandas 3 yields Arrow large_string, and the loader rejects it; the same dataset as `metadata.jsonl` loads fine. `make_audiofolder.py` now writes JSON Lines, and the training environment pins `pandas<3`.
 
+**First conversion on Colab (2026-10-08).** The converted training checkpoint has 46.7M parameters (generator plus discriminator) and a 30-row embedding table. Two findings. (1) The MMS vocabulary has 30 entries, not 31: `<unk>` is a tokenizer-level token with id 30, one past the last embedding row (Meta's quirk; unknown characters would index out of range, which our text filtering prevents). The first extension gave `.` the same id 30 as `<unk>`; it now reserves its own row for `<unk>` and puts `. , ? !` at ids 31 to 34 (embedding rows 30 -> 35). (2) Loading Meta's file with newer torch printed "weights not used" for `weight_g`/`weight_v` and "newly initialized" for `parametrizations.weight.original0/1` in the WaveNet layers of the flow and posterior encoder. That is harmless if torch remaps them and a silent loss of the pretrained weights if not; `scripts/check_conversion.py` compares the actual tensors with Meta's original, at file level and as the training script loads the model, and must print `RESULT: OK` before training.
+
 ## Constraints
 
 - The sandbox can't reach the data hosts or run models, so data prep and training run on **Colab free tier**.
