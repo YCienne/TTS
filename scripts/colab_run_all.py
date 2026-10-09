@@ -98,6 +98,7 @@ def stages(args, p):
               capture_output=True).returncode == 0)
     p.run("training recipe",
           f"test -d {RECIPE} || git clone -q https://github.com/ylacombe/finetune-hf-vits {RECIPE}; "
+          f"{PY} {REPO}/scripts/patch_recipe.py --recipe {RECIPE} && "
           f"cd {RECIPE}/monotonic_align && mkdir -p monotonic_align && {PY} setup.py build_ext --inplace -q "
           f"&& cd {RECIPE} && {PY} -c \"from utils.modeling_vits_training import VitsModelForPreTraining\"",
           skip_if=lambda: bool(list(Path(RECIPE, "monotonic_align", "monotonic_align").glob("*.so"))))

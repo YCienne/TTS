@@ -2,6 +2,10 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .pytest_cache/
+# local virtualenvs
+TTenv/
+.venv/
+venv/
 # data, audio and checkpoints live on Drive / the Hub, not in git
 data/
 checkpoints/
