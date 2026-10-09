@@ -13,12 +13,16 @@ scripts/prepare_data.py     cut long clips into sentence segments, clean text, r
 scripts/asr_check.py        score every segment with MMS ASR to catch wrong cuts
 scripts/make_audiofolder.py, extend_vocab.py   dataset and vocabulary for the training recipe
 scripts/synthesize.py       inference: text in, wav out (no external TTS)
+scripts/eval_synthesis.py   round-trip ASR eval on held-out test prompts: CER/WER and ɛ/e, ɔ/o vowel-harmony confusions
 notebooks/00..05            Colab runners, in order (verify, audit, prepare, training prereqs, ASR check, fine-tune)
 src/akantts/                normalize, segment, audio_quality, metrics
 configs/                    data selection and training config
 tests/                      unit tests (pytest)
 ```
-Planned: evaluation of synthesized speech, demo app, report.
+Evaluation is automated CER/WER plus a vowel-harmony-specific confusion count (`eval_synthesis.py`, on the
+held-out test split) together with a native-speaker listening test for naturalness and tone, which this
+orthography does not mark and the automated check cannot see (`docs/native_speaker_brief.md`).
+Planned: demo app, report.
 
 ## Setup
 ```bash
