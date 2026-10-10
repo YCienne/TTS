@@ -6,3 +6,4 @@ librosa
 numpy
 accelerate
 pytest
+gradio>=4.0

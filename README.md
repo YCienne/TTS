@@ -3,7 +3,12 @@
 Fine-tunes a pretrained VITS model (`facebook/mms-tts-aka`) on single-speaker Twi speech from WAXAL (`twi_tts`).
 Built for the University of Ghana HCI Lab TTS task; deadline Sun 18 Oct 2026, 11:59 pm GMT.
 
-**Status:** data prepared (speaker 2, about 2 h); the 2-epoch smoke test has run end to end on a T4 (training, checkpoint save, inference all confirmed working — see `docs/dataset_survey.md`). The real 100-epoch run is next. Nothing is fully trained yet.
+**Status:** the real 100-epoch fine-tuning run has completed (speaker 2, about 2 h of data) and the checkpoint
+(`speaker2_punct`) synthesizes speech. Automated round-trip evaluation (`scripts/eval_synthesis.py`, CER/WER and
+ɛ/e, ɔ/o vowel-harmony confusions on the held-out test split) has run against it. The native-speaker listening
+test (naturalness, intelligibility, tone and vowel-harmony judgments this orthography and ASR cannot measure —
+see `docs/native_speaker_brief.md`) is out with 3 raters; results pending. Hugging Face checkpoint upload and the
+Gradio demo (`scripts/demo_app.py`) are next.
 
 ## Layout
 ```
@@ -14,6 +19,7 @@ scripts/asr_check.py        score every segment with MMS ASR to catch wrong cuts
 scripts/make_audiofolder.py, extend_vocab.py   dataset and vocabulary for the training recipe
 scripts/synthesize.py       inference: text in, wav out (no external TTS)
 scripts/eval_synthesis.py   round-trip ASR eval on held-out test prompts: CER/WER and ɛ/e, ɔ/o vowel-harmony confusions
+scripts/demo_app.py         Gradio demo: type Akan text, hear the fine-tuned model speak it
 notebooks/00..05            Colab runners, in order (verify, audit, prepare, training prereqs, ASR check, fine-tune)
 src/akantts/                normalize, segment, audio_quality, metrics
 configs/                    data selection and training config
@@ -22,7 +28,7 @@ tests/                      unit tests (pytest)
 Evaluation is automated CER/WER plus a vowel-harmony-specific confusion count (`eval_synthesis.py`, on the
 held-out test split) together with a native-speaker listening test for naturalness and tone, which this
 orthography does not mark and the automated check cannot see (`docs/native_speaker_brief.md`).
-Planned: demo app, report.
+Planned: Hugging Face checkpoint upload, written report.
 
 ## Setup
 ```bash
