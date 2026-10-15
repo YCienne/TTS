@@ -3,12 +3,16 @@
 Fine-tunes a pretrained VITS model (`facebook/mms-tts-aka`) on single-speaker Twi speech from WAXAL (`twi_tts`).
 Built for the University of Ghana HCI Lab TTS task; deadline Sun 18 Oct 2026, 11:59 pm GMT.
 
-**Status:** the real 100-epoch fine-tuning run has completed (speaker 2, about 2 h of data) and the checkpoint
-(`speaker2_punct`) synthesizes speech. Automated round-trip evaluation (`scripts/eval_synthesis.py`, CER/WER and
-ɛ/e, ɔ/o vowel-harmony confusions on the held-out test split) has run against it. The native-speaker listening
-test (naturalness, intelligibility, tone and vowel-harmony judgments this orthography and ASR cannot measure —
-see `docs/native_speaker_brief.md`) is out with 3 raters; results pending. Hugging Face checkpoint upload and the
-Gradio demo (`scripts/demo_app.py`) are next.
+**Status:** two 100-epoch fine-tuning runs have completed on different WAXAL speakers with an identical recipe —
+an initial run on speaker 2 and a final run on speaker 3 (`speaker3_punct`), submitted as the final checkpoint.
+Automated round-trip evaluation (`scripts/eval_synthesis.py`, CER/WER and ɛ/e, ɔ/o vowel-harmony confusions on
+the held-out test split) has run against both; speaker 3 shows far fewer vowel-harmony confusions (7 vs. 23 of
+20 prompts) at a similar WER. The native-speaker listening test (naturalness, intelligibility, tone and
+vowel-harmony judgments this orthography and ASR cannot measure — see `docs/native_speaker_brief.md`) used
+speaker-2 samples (collected before the speaker-3 retrain) and is out with 3 raters; results pending. Both
+checkpoints are published on Hugging Face (speaker 3: `Lhue-Lhue/akan-tts-speaker3-vits`, speaker 2:
+`Lhue-Lhue/akan-tts-mms-vits`), and the Gradio demo (`scripts/demo_app.py`, `space/app.py`) loads speaker 3 by
+default.
 
 ## Layout
 ```
@@ -28,7 +32,8 @@ tests/                      unit tests (pytest)
 Evaluation is automated CER/WER plus a vowel-harmony-specific confusion count (`eval_synthesis.py`, on the
 held-out test split) together with a native-speaker listening test for naturalness and tone, which this
 orthography does not mark and the automated check cannot see (`docs/native_speaker_brief.md`).
-Planned: Hugging Face checkpoint upload, written report.
+Hugging Face checkpoint upload and the written report (`docs/report.docx`) are done; the presentation deck is
+still planned.
 
 ## Setup
 ```bash

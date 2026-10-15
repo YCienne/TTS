@@ -82,7 +82,10 @@ def main():
 
     tok, tts = load_tts(args.model, device)
     transcribe = load_asr(device)
-    vocab = set(tok.get_vocab())
+    # get_vocab() rebuilds via range(vocab_size) and undercounts when the vocab file has a gap
+    # (ours reserves id 30 for <unk>, which pushes the last id, "!", out of range) -- union with
+    # the raw encoder so every id the tokenizer actually accepts is recognized here too.
+    vocab = set(tok.get_vocab()) | set(getattr(tok, "encoder", {}))
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
