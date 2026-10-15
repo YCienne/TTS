@@ -1,0 +1,53 @@
+name: Speaker comparison audio
+
+# Manually triggered: synthesizes the same set of Akan sentences with both
+# published checkpoints (speaker 2, the earlier pilot run, and speaker 3, the
+# final retrain) and uploads the resulting clips as a build artifact. Runs
+# entirely on the GitHub runner -- neither checkpoint is downloaded locally.
+"on":
+  workflow_dispatch: {}
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+          && pip install transformers soundfile numpy huggingface_hub
+
+      - name: Write comparison sentences
+        run: |
+          cat > sentences.txt << 'EOF'
+          Ɛyɛ dɛ yie.
+          Me kɔ fie.
+          Akwaaba!
+          aprɛ no asɛe ama aboa akɔhyɛm
+          ɛwiem nwunu ahoɔden no gyina nwunu a ɛkyɛn freegye deɛ mmienu.
+          nsutɔ ahoɔden no gyina ɔha mu abupɛn baako, ɛnna ewiem nwunu no nso gyina ɔha mu abupɛn aduonum-nnum.
+          mframa ahoɔden nso gyina kilomita du-nkron wɔ dɔnhwere biara mu.
+          dɔnhwere baako ntam no, ewiem bɛdwo kakra.
+          EOF
+
+      - name: Synthesize with speaker 2 (earlier pilot run)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python scripts/synthesize.py --model Lhue-Lhue/akan-tts-mms-vits
+          --text-file sentences.txt --out outputs/compare/speaker2
+
+      - name: Synthesize with speaker 3 (final retrain)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python scripts/synthesize.py --model Lhue-Lhue/akan-tts-speaker3-vits
+          --text-file sentences.txt --out outputs/compare/speaker3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: speaker-comparison-audio
+          path: outputs/compare/
+          retention-days: 14
