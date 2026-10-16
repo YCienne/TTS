@@ -7,6 +7,11 @@ One wav per input line (--text-file, one prompt per line) or for --text. Text is
 same way as the training text; characters the model's vocabulary cannot represent are dropped with a
 warning (digits are never spoken: numbers must be written as words). --seed fixes the sampling
 noise, so a run is reproducible. Also writes <out>/prompts.tsv listing file, text and what was spoken.
+
+Output audio is run through akantts.postprocess.clean_audio: a spectral-gate denoise and a gentle
+high-shelf cut to reduce the buzz/ringing a checkpoint fine-tuned on under an hour of audio leaves
+in, plus peak normalization. This does not fix pronunciation or prosody, only how clean the signal
+sounds.
 """
 import argparse
 import csv
@@ -15,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from akantts.normalize import to_inference_text  # noqa: E402
+from akantts.postprocess import clean_audio  # noqa: E402
 
 
 def main():
@@ -57,6 +63,7 @@ def main():
         torch.manual_seed(args.seed)
         with torch.no_grad():
             wav = model(**tok(text, return_tensors="pt").to(device)).waveform[0].cpu().numpy()
+        wav = clean_audio(wav, model.config.sampling_rate)
         path = out / f"{i + 1:03d}.wav"
         sf.write(path, wav, model.config.sampling_rate)
         rows.append((path.name, raw, text, round(len(wav) / model.config.sampling_rate, 2)))

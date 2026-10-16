@@ -169,6 +169,19 @@ def build():
         "spotting outliers rather than as an absolute score. Full per-prompt results for speaker 3 "
         "are in outputs/eval_speaker3_kaggle/eval_report.tsv."
     )
+    doc.add_paragraph(
+        "Beyond the automated numbers, informal listening found speaker 2's output noticeably more "
+        "synthetic-sounding than speaker 3's -- audible high-frequency buzz/ringing consistent with "
+        "a checkpoint fine-tuned on less usable audio. For that reason the interactive demo only "
+        "offers speaker 3; speaker 2 remains published on Hugging Face for comparison but is not "
+        "demo-selectable. All synthesized output (both the demo and scripts/synthesize.py) is run "
+        "through a light cleanup pass (src/akantts/postprocess.py: a spectral-gate denoise, a "
+        "gentle high-frequency cut, and peak normalization) to reduce that artifact; this measurably "
+        "cleans up the signal but does not change pronunciation, prosody, or the underlying data "
+        "ceiling -- there is no standard percentage score for \"how human\" synthesized speech is "
+        "(the field uses MOS, a 1-5 listening-test rating, not a percentage), and we do not claim "
+        "one here."
+    )
 
     doc.add_paragraph("3.2 Native-speaker listening test", style="Heading 2")
     doc.add_paragraph(
@@ -218,6 +231,10 @@ def build():
         "The native-speaker listening test was run against speaker-2 samples before the speaker-3 "
         "retrain; naturalness and tone for the final submitted (speaker-3) checkpoint are only "
         "indirectly evidenced, through the automated vowel-harmony metric above.",
+        "Audio naturalness is bounded by how little training data this scale of fine-tuning used "
+        "(well under an hour for the final checkpoint); the post-processing cleanup pass (section "
+        "3.1) improves perceived clarity but cannot substitute for more data or longer training -- "
+        "closing that gap further would need either.",
     ])
     doc.add_paragraph("Suggested improvements:", style="Heading 2")
     add_bullets(doc, [
@@ -260,9 +277,10 @@ def build():
         "https://github.com/YCienne/TTS",
         "Fine-tuned checkpoint (speaker 3, final submitted model): "
         "https://huggingface.co/Lhue-Lhue/akan-tts-speaker3-vits",
-        "Earlier speaker-2 checkpoint, reported above for comparison: "
+        "Earlier speaker-2 checkpoint, reported above for comparison, not demo-selectable: "
         "https://huggingface.co/Lhue-Lhue/akan-tts-mms-vits",
-        "Interactive demo (Gradio): scripts/demo_app.py, space/app.py",
+        "Interactive demo (Gradio): scripts/demo_app.py, space/app.py -- speaks with the speaker-3 "
+        "checkpoint only",
     ])
     add_pending(doc, "shared folder link (audio samples + text prompts + checkpoint, accessible "
                       "without a request) for the submission form")

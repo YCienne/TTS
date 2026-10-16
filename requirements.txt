@@ -4,6 +4,7 @@ datasets>=2.19
 soundfile
 librosa
 numpy
+scipy
 accelerate
 pytest
 gradio>=4.0
