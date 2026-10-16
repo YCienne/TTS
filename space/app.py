@@ -1,22 +1,21 @@
 """Gradio Space: type Akan (Twi) text, hear it spoken by a fine-tuned model. No external TTS service.
 
-A dropdown switches between the two published checkpoints (speaker 3, the final retrain, and speaker 2,
-the earlier pilot run) from the Hub, so they can be compared side by side. Only one model is held in
-memory at a time -- switching the dropdown unloads the previous one and loads the new one.
-Standalone deployment of scripts/demo_app.py from https://github.com/YCienne/TTS -- same text
-normalization and inference path, so what you hear here matches what the evaluation and the
-native-speaker samples heard. Characters outside the model's vocabulary (including digits --
-numbers are not expanded) are dropped with a warning shown in the UI.
+Speaks with the speaker-3 checkpoint (the final retrain -- see the project README for why speaker 2,
+an earlier pilot run with less and noisier training audio, was dropped from the live demo). Output
+is denoised and peak-normalized (akantts.postprocess.clean_audio) to reduce the high-frequency
+buzz a checkpoint fine-tuned on under an hour of audio leaves in; this improves how clean the
+signal sounds, not pronunciation or prosody. Standalone deployment of scripts/demo_app.py from
+https://github.com/YCienne/TTS -- same text normalization and inference path, so what you hear
+here matches what the evaluation and the native-speaker samples heard. Characters outside the
+model's vocabulary (including digits -- numbers are not expanded) are dropped with a warning shown
+in the UI.
 """
 import argparse
 
 from normalize import to_inference_text
+from postprocess import clean_audio
 
-MODEL_CHOICES = {
-    "Speaker 3 (final retrain)": "Lhue-Lhue/akan-tts-speaker3-vits",
-    "Speaker 2 (earlier pilot run)": "Lhue-Lhue/akan-tts-mms-vits",
-}
-DEFAULT_LABEL = "Speaker 3 (final retrain)"
+DEFAULT_MODEL = "Lhue-Lhue/akan-tts-speaker3-vits"
 
 EXAMPLES = [
     "Ɛyɛ dɛ yie.",
@@ -83,29 +82,27 @@ def _theme(gr):
     )
 
 
-def build_demo(models: dict, default_label: str):
+def build_demo(model_path: str):
     import gradio as gr
     import torch
     from transformers import AutoTokenizer, VitsModel
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # Only one checkpoint is kept in memory at a time: switching the dropdown drops the old
-    # tokenizer/model before loading the new one, so comparing speakers doesn't double the RAM use.
-    _cache = {"label": None, "tok": None, "model": None}
+    # Loaded lazily on first request, not at server start, so startup stays fast and light.
+    _cache = {"tok": None, "model": None}
 
-    def _get(label):
-        if _cache["label"] != label:
-            path = models[label]
-            tok = AutoTokenizer.from_pretrained(path)
-            model = VitsModel.from_pretrained(path).to(device).eval()
-            _cache.update(label=label, tok=tok, model=model)
+    def _get():
+        if _cache["model"] is None:
+            tok = AutoTokenizer.from_pretrained(model_path)
+            model = VitsModel.from_pretrained(model_path).to(device).eval()
+            _cache.update(tok=tok, model=model)
         return _cache["tok"], _cache["model"]
 
-    def speak(text, label, seed, speaking_rate):
+    def speak(text, seed, speaking_rate):
         text = (text or "").strip()
         if not text:
             return None, "Type something first."
-        tok, model = _get(label)
+        tok, model = _get()
         # get_vocab() rebuilds via range(vocab_size) and undercounts when the vocab file has a gap
         # (ours reserves id 30 for <unk>, which pushes the last id, "!", out of range) -- union with
         # the raw encoder so every id the tokenizer actually accepts is recognized here too.
@@ -118,7 +115,8 @@ def build_demo(models: dict, default_label: str):
         with torch.no_grad():
             wav = model(**tok(clean, return_tensors="pt").to(device)).waveform[0].cpu().numpy()
         sr = model.config.sampling_rate
-        note = f"Speaking ({label}): {clean!r}"
+        wav = clean_audio(wav, sr)
+        note = f"Speaking: {clean!r}"
         if removed:
             note += f"  (dropped, not in the model's vocabulary: {removed})"
         return (sr, wav), note
@@ -128,19 +126,17 @@ def build_demo(models: dict, default_label: str):
             "# Akan (Twi) text-to-speech demo\n"
             "Fine-tuned from `facebook/mms-tts-aka` (CC-BY-NC-4.0, non-commercial). Not a "
             "translator -- type Akan text directly. Numbers must be written as words; tone is not "
-            "marked in this orthography. Switch the model below to compare speakers; the first "
-            "request after switching takes a few seconds longer while it loads. "
+            "marked in this orthography. "
             "Code: [YCienne/TTS](https://github.com/YCienne/TTS)."
         )
         text = gr.Textbox(label="Akan text", lines=3, placeholder="Twerɛ Twi wɔ ha...")
-        model_choice = gr.Dropdown(label="Model", choices=list(models.keys()), value=default_label)
         with gr.Row():
             seed = gr.Number(label="Seed", value=0, precision=0)
             rate = gr.Slider(label="Speaking rate", minimum=0.5, maximum=1.5, value=1.0, step=0.05)
         btn = gr.Button("Speak", variant="primary")
         audio = gr.Audio(label="Output", type="numpy")
         note = gr.Markdown()
-        btn.click(speak, inputs=[text, model_choice, seed, rate], outputs=[audio, note])
+        btn.click(speak, inputs=[text, seed, rate], outputs=[audio, note])
         gr.Examples(examples=EXAMPLES, inputs=text)
 
     return demo
@@ -148,16 +144,10 @@ def build_demo(models: dict, default_label: str):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", help="optional extra checkpoint folder or Hub id, pre-selected by default")
+    ap.add_argument("--model", default=DEFAULT_MODEL, help="checkpoint folder or Hub id")
     args = ap.parse_args()
 
-    models = dict(MODEL_CHOICES)
-    default_label = DEFAULT_LABEL
-    if args.model:
-        default_label = f"Custom ({args.model})"
-        models[default_label] = args.model
-
-    demo = build_demo(models, default_label)
+    demo = build_demo(args.model)
     demo.launch()
 
 

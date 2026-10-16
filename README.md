@@ -3,16 +3,26 @@
 Fine-tunes a pretrained VITS model (`facebook/mms-tts-aka`) on single-speaker Twi speech from WAXAL (`twi_tts`).
 Built for the University of Ghana HCI Lab TTS task; deadline Sun 18 Oct 2026, 11:59 pm GMT.
 
-**Status:** two 100-epoch fine-tuning runs have completed on different WAXAL speakers with an identical recipe —
-an initial run on speaker 2 and a final run on speaker 3 (`speaker3_punct`), submitted as the final checkpoint.
-Automated round-trip evaluation (`scripts/eval_synthesis.py`, CER/WER and ɛ/e, ɔ/o vowel-harmony confusions on
-the held-out test split) has run against both; speaker 3 shows far fewer vowel-harmony confusions (7 vs. 23 of
-20 prompts) at a similar WER. The native-speaker listening test (naturalness, intelligibility, tone and
-vowel-harmony judgments this orthography and ASR cannot measure — see `docs/native_speaker_brief.md`) used
-speaker-2 samples (collected before the speaker-3 retrain) and is out with 3 raters; results pending. Both
-checkpoints are published on Hugging Face (speaker 3: `Lhue-Lhue/akan-tts-speaker3-vits`, speaker 2:
-`Lhue-Lhue/akan-tts-mms-vits`), and the Gradio demo (`scripts/demo_app.py`, `space/app.py`) loads speaker 3 by
-default.
+**Status:** two fine-tuning runs have completed on different WAXAL speakers with an identical recipe — an
+initial run on speaker 2 (2 epochs) and a final run on speaker 3 (`speaker3_punct`, 100 epochs, more and
+cleaner usable audio — see `docs/dataset_survey.md`), submitted as the final checkpoint. Automated round-trip
+evaluation (`scripts/eval_synthesis.py`, CER/WER and ɛ/e, ɔ/o vowel-harmony confusions on the held-out test
+split) has run against both; speaker 3 shows far fewer vowel-harmony confusions (7 vs. 23 of 20 prompts) at a
+similar WER, and sounds noticeably less synthetic — expected, given it trained far longer on more audio. The
+native-speaker listening test (naturalness, intelligibility, tone and vowel-harmony judgments this orthography
+and ASR cannot measure — see `docs/native_speaker_brief.md`) used speaker-2 samples (collected before the
+speaker-3 retrain) and is out with 3 raters; results pending.
+
+Both checkpoints are published on Hugging Face for provenance (speaker 3: `Lhue-Lhue/akan-tts-speaker3-vits`,
+speaker 2: `Lhue-Lhue/akan-tts-mms-vits`), but the Gradio demo (`scripts/demo_app.py`, `space/app.py`) only
+offers speaker 3 — speaker 2's shorter training run leaves it clearly more synthetic-sounding, and it would
+only confuse a demo viewer. Synthesized audio is run through a light cleanup pass
+(`src/akantts/postprocess.py`: spectral-gate denoise, a gentle high-frequency cut, peak normalization) to
+reduce the buzz/ringing this scale of fine-tuning leaves in. That measurably improves how clean the output
+sounds but is not a substitute for more training data — a checkpoint fine-tuned on well under an hour of audio
+will not reach the naturalness of a production TTS system trained on tens of hours; there is no standard
+percentage score for "how human" synthesized speech sounds (the field uses MOS, a 1–5 listening-test score, not
+a percentage), so this README does not claim one.
 
 ## Layout
 ```
@@ -25,7 +35,7 @@ scripts/synthesize.py       inference: text in, wav out (no external TTS)
 scripts/eval_synthesis.py   round-trip ASR eval on held-out test prompts: CER/WER and ɛ/e, ɔ/o vowel-harmony confusions
 scripts/demo_app.py         Gradio demo: type Akan text, hear the fine-tuned model speak it
 notebooks/00..05            Colab runners, in order (verify, audit, prepare, training prereqs, ASR check, fine-tune)
-src/akantts/                normalize, segment, audio_quality, metrics
+src/akantts/                normalize, segment, audio_quality, postprocess, metrics
 configs/                    data selection and training config
 tests/                      unit tests (pytest)
 ```

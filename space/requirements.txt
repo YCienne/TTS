@@ -1,3 +1,4 @@
 torch
 transformers>=4.40
 soundfile
+scipy
