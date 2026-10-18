@@ -12,7 +12,8 @@ license: cc-by-nc-4.0
 
 Type Akan (Twi) text, hear it spoken by our fine-tuned model -- no external TTS API.
 
-- Model: [Lhue-Lhue/akan-tts-speaker3-vits](https://huggingface.co/Lhue-Lhue/akan-tts-speaker3-vits), fine-tuned
-  from `facebook/mms-tts-aka` (Meta MMS, CC-BY-NC-4.0, non-commercial use only).
+- Model: [Lhue-Lhue/akan-tts-speaker3-vits](https://huggingface.co/Lhue-Lhue/akan-tts-speaker3-vits) (speaker 3,
+  the final submitted checkpoint), fine-tuned from `facebook/mms-tts-aka` (Meta MMS, CC-BY-NC-4.0, non-commercial
+  use only).
 - Code, data preparation, evaluation and docs: [YCienne/TTS](https://github.com/YCienne/TTS).
 - Built for the University of Ghana HCI Lab TTS task.

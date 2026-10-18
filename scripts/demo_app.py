@@ -3,11 +3,15 @@
     python scripts/demo_app.py
     python scripts/demo_app.py --model <checkpoint folder or Hub id>   # override the default checkpoint
 
-Speaks with the speaker-3 checkpoint (the final retrain) by default -- see the project README for
-why speaker 2, an earlier pilot run with less and noisier training audio, was dropped from the demo.
-Output is denoised and peak-normalized (akantts.postprocess.clean_audio) to reduce the high-frequency
-buzz a checkpoint fine-tuned on under an hour of audio leaves in; this improves how clean the signal
-sounds, not pronunciation or prosody.
+Speaks with the speaker-3 checkpoint by default -- see the project README for why, after comparing
+both fine-tuned speakers by ear, speaker 3 was chosen as the final submitted model (less audible
+high-frequency artifact, far fewer vowel-harmony confusions) despite speaker 2 having a slightly
+lower character error rate and dropping fewer whole words on some sentences; see docs/report.docx
+section 3 for the full tradeoff. Output is denoised and peak-normalized
+(akantts.postprocess.clean_audio) to reduce the high-frequency buzz a checkpoint fine-tuned on under
+an hour of audio leaves in; this improves how clean the signal sounds, not pronunciation or
+prosody. A handful of rare words (letter clusters that appear once or not at all in the ~1h
+training corpus) will still mispronounce regardless of cleanup -- see the README.
 
 Same text normalization and inference path as synthesize.py, so what you hear here matches what the
 evaluation and the native-speaker samples heard. Characters outside the model's vocabulary (including
@@ -26,7 +30,7 @@ DEFAULT_MODEL = "Lhue-Lhue/akan-tts-speaker3-vits"
 EXAMPLES = [
     "Ɛyɛ dɛ yie.",
     "Me kɔ fie.",
-    "Akwaaba!",
+    "Aprɛ no asɛe ama aboa akɔhyɛm.",
 ]
 
 # White background, blue-black accents -- fixed regardless of the viewer's system theme.
@@ -88,6 +92,32 @@ def _theme(gr):
     )
 
 
+_CUSTOM_CSS = """
+.gradio-container { max-width: 780px !important; margin: 0 auto !important; }
+#hero {
+    background: linear-gradient(135deg, #0B1226 0%, #1C2B4A 100%);
+    border-radius: 18px; padding: 30px 34px; margin-bottom: 4px; color: #FFFFFF;
+    box-shadow: 0 8px 24px rgba(11, 18, 38, 0.18);
+}
+#hero h1 { margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.01em; color: #FFFFFF; }
+#hero p { margin: 0; color: #C7D0E3; font-size: 0.98rem; line-height: 1.55; }
+#hero code {
+    color: #FCD116; background: rgba(255, 255, 255, 0.08); padding: 1px 6px; border-radius: 4px;
+}
+#accent-bar {
+    height: 5px; border-radius: 999px; margin: 14px 0 22px 0;
+    background: linear-gradient(90deg, #CE1126 0%, #FCD116 34%, #006B3F 68%, #0B1226 100%);
+}
+#speak-btn { font-size: 1.05rem !important; font-weight: 600 !important; padding: 12px !important; }
+#footer-note {
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid #D8DEE9;
+    color: #6B7280; font-size: 0.85rem; text-align: center; line-height: 1.6;
+}
+#footer-note a { color: #0B1226; font-weight: 600; text-decoration: none; }
+#footer-note a:hover { text-decoration: underline; }
+"""
+
+
 def build_demo(model_path: str):
     import gradio as gr
     import torch
@@ -127,22 +157,32 @@ def build_demo(model_path: str):
             note += f"  (dropped, not in the model's vocabulary: {removed})"
         return (sr, wav), note
 
-    with gr.Blocks(title="Akan (Twi) TTS demo", theme=_theme(gr)) as demo:
-        gr.Markdown(
-            "# Akan (Twi) text-to-speech demo\n"
-            "Fine-tuned from `facebook/mms-tts-aka` (CC-BY-NC-4.0, non-commercial). Not a "
-            "translator -- type Akan text directly. Numbers must be written as words; tone is not "
-            "marked in this orthography."
+    with gr.Blocks(title="Akan (Twi) TTS demo") as demo:
+        gr.HTML(
+            '<div id="hero"><h1>Akwaaba \U0001F44B — Akan (Twi) Text-to-Speech</h1>'
+            "<p>Fine-tuned from <code>facebook/mms-tts-aka</code> (CC-BY-NC-4.0, non-commercial). "
+            "Not a translator -- type Akan text directly. Numbers must be written as words; tone "
+            "is not marked in this orthography.</p></div>"
         )
-        text = gr.Textbox(label="Akan text", lines=3, placeholder="Twerɛ Twi wɔ ha...")
-        with gr.Row():
-            seed = gr.Number(label="Seed", value=0, precision=0)
-            rate = gr.Slider(label="Speaking rate", minimum=0.5, maximum=1.5, value=1.0, step=0.05)
-        btn = gr.Button("Speak", variant="primary")
-        audio = gr.Audio(label="Output", type="numpy")
-        note = gr.Markdown()
+        gr.HTML('<div id="accent-bar"></div>')
+        with gr.Group():
+            text = gr.Textbox(label="\U0001F4DD Akan text", lines=3, placeholder="Twerɛ Twi wɔ ha...")
+            btn = gr.Button("\U0001F50A Speak", variant="primary", elem_id="speak-btn")
+            audio = gr.Audio(label="Output", type="numpy")
+            note = gr.Markdown()
+        with gr.Accordion("⚙️ Advanced settings", open=False):
+            with gr.Row():
+                seed = gr.Number(label="Seed", value=0, precision=0)
+                rate = gr.Slider(label="Speaking rate", minimum=0.5, maximum=1.5, value=1.0, step=0.05)
         btn.click(speak, inputs=[text, seed, rate], outputs=[audio, note])
+        gr.Markdown("**Try an example**")
         gr.Examples(examples=EXAMPLES, inputs=text)
+        gr.HTML(
+            '<div id="footer-note">Built for the University of Ghana HCI Lab TTS task &middot; '
+            '<a href="https://github.com/YCienne/TTS" target="_blank">Source on GitHub</a> &middot; '
+            '<a href="https://huggingface.co/Lhue-Lhue/akan-tts-speaker3-vits" target="_blank">'
+            "Model on Hugging Face</a></div>"
+        )
 
     return demo
 
@@ -153,8 +193,10 @@ def main():
     ap.add_argument("--share", action="store_true", help="create a public Gradio share link")
     args = ap.parse_args()
 
+    import gradio as gr
+
     demo = build_demo(args.model)
-    demo.launch(share=args.share)
+    demo.launch(share=args.share, theme=_theme(gr), css=_CUSTOM_CSS)
 
 
 if __name__ == "__main__":
